@@ -1,0 +1,316 @@
+stages:
+  - validate
+  - plan
+  - apply
+  - management
+
+.terraform_template_dev: &terraform_template_dev
+  image: gitlab-registry.platform.xbyorange.com/xbyorange/sdlc/terraform-container:0.11.14
+  variables:
+    AWS_REGION: eu-central-1
+    BUCKET_NAME: orange-x.previous-environments.terraform.states
+    AWS_ENVIRONMENT: development
+  before_script:
+    - terraform init
+        -backend-config="bucket=$BUCKET_NAME"
+        -backend-config="key=orange-x.previous-environments.$AWS_ENVIRONMENT.bigdata.emr.processes.terraform.state"
+        -backend-config="region=$AWS_REGION"
+    - terraform get -update
+  tags:
+    - aws
+    - docker
+    - previous-bigdata
+    - private
+  only:
+    - develop
+
+validate_dev:
+  <<: *terraform_template_dev
+  stage: validate
+  script:
+    - terraform validate
+      -var GITLAB_CI_PIPELINE_ID=$CI_PIPELINE_ID
+      -var GITLAB_CI_PROJECT_NAME=$CI_PROJECT_NAME
+      -var ENVIRONMENT=$AWS_ENVIRONMENT
+      -var EMR_MASTER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_WORKER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_NUM_WORKERS=3
+      -var AMI_OWNER=$AWS_PREVIOUS_ACCOUNT_ID
+      -var VPC_ENVIRONMENT=previous
+      -var SG_ENVIRONMENT=previous
+      -var CARTERA_DATE=$CARTERA_DATE
+      -var BILL_YEAR=$BILL_YEAR
+      -var BILL_MONTH=$BILL_MONTH
+      -var DATE_FROM=$DATE_FROM
+      -var PROCESS_DATE=$PROCESS_DATE
+      -var DATE=$DATE
+      -var INVENTORY_DATE=$INVENTORY_DATE
+      -var SPOT_PRICE=$SPOT_PRICE
+      -var SPOT_INSTANCE=$SPOT_INSTANCE
+
+plan_dev:
+  <<: *terraform_template_dev
+  stage: plan
+  script:
+    - terraform plan
+      -out=output/$AWS_ENVIRONMENT.plan
+      -var GITLAB_CI_PIPELINE_ID=$CI_PIPELINE_ID
+      -var GITLAB_CI_PROJECT_NAME=$CI_PROJECT_NAME
+      -var ENVIRONMENT=$AWS_ENVIRONMENT
+      -var EMR_MASTER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_WORKER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_NUM_WORKERS=3
+      -var AMI_OWNER=$AWS_PREVIOUS_ACCOUNT_ID
+      -var VPC_ENVIRONMENT=previous
+      -var SG_ENVIRONMENT=previous
+      -var CARTERA_DATE=$CARTERA_DATE
+      -var BILL_YEAR=$BILL_YEAR
+      -var BILL_MONTH=$BILL_MONTH
+      -var DATE_FROM=$DATE_FROM
+      -var PROCESS_DATE=$PROCESS_DATE
+      -var DATE=$DATE
+      -var INVENTORY_DATE=$INVENTORY_DATE
+      -var SPOT_PRICE=$SPOT_PRICE
+      -var SPOT_INSTANCE=$SPOT_INSTANCE
+  artifacts:
+    paths:
+      - output
+
+apply_and_run_dev:
+  <<: *terraform_template_dev
+  stage: apply
+  script:
+    - terraform apply output/$AWS_ENVIRONMENT.plan
+
+
+destroy_dev:
+  <<: *terraform_template_dev
+  stage: management
+  script:
+    - terraform destroy --force
+      -var GITLAB_CI_PIPELINE_ID=$CI_PIPELINE_ID
+      -var GITLAB_CI_PROJECT_NAME=$CI_PROJECT_NAME
+      -var ENVIRONMENT=$AWS_ENVIRONMENT
+      -var EMR_MASTER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_WORKER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_NUM_WORKERS=3
+      -var AMI_OWNER=$AWS_PREVIOUS_ACCOUNT_ID
+      -var VPC_ENVIRONMENT=previous
+      -var SG_ENVIRONMENT=previous
+      -var CARTERA_DATE=$CARTERA_DATE
+      -var BILL_YEAR=$BILL_YEAR
+      -var BILL_MONTH=$BILL_MONTH
+      -var DATE_FROM=$DATE_FROM
+      -var PROCESS_DATE=$PROCESS_DATE
+      -var DATE=$DATE
+      -var INVENTORY_DATE=$INVENTORY_DATE
+      -var SPOT_PRICE=$SPOT_PRICE
+      -var SPOT_INSTANCE=$SPOT_INSTANCE
+  when: manual
+
+.terraform_template_pre: &terraform_template_pre
+  image: gitlab-registry.platform.xbyorange.com/xbyorange/sdlc/terraform-container:0.11.14
+  variables:
+    AWS_REGION: eu-central-1
+    BUCKET_NAME: orange-x.previous-environments.terraform.states
+    AWS_ENVIRONMENT: previous
+  before_script:
+    - terraform init
+        -backend-config="bucket=$BUCKET_NAME"
+        -backend-config="key=orange-x.$AWS_ENVIRONMENT-environments.bigdata.emr.processes.terraform.state"
+        -backend-config="region=$AWS_REGION"
+    - terraform get -update
+  tags:
+    - aws
+    - docker
+    - previous-bigdata
+    - private
+  only:
+    - /^feature.*$/
+
+validate_pre:
+  <<: *terraform_template_pre
+  stage: validate
+  script:
+    - terraform validate
+      -var GITLAB_CI_PIPELINE_ID=$CI_PIPELINE_ID
+      -var GITLAB_CI_PROJECT_NAME=$CI_PROJECT_NAME
+      -var ENVIRONMENT=$AWS_ENVIRONMENT
+      -var EMR_MASTER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_WORKER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_NUM_WORKERS=3
+      -var AMI_OWNER=$AWS_PREVIOUS_ACCOUNT_ID
+      -var VPC_ENVIRONMENT=previous
+      -var SG_ENVIRONMENT=$AWS_ENVIRONMENT
+      -var CARTERA_DATE=$CARTERA_DATE
+      -var BILL_YEAR=$BILL_YEAR
+      -var BILL_MONTH=$BILL_MONTH
+      -var DATE_FROM=$DATE_FROM
+      -var PROCESS_DATE=$PROCESS_DATE
+      -var DATE=$DATE
+      -var INVENTORY_DATE=$INVENTORY_DATE
+      -var SPOT_PRICE=$SPOT_PRICE
+      -var SPOT_INSTANCE=$SPOT_INSTANCE
+
+plan_pre:
+  <<: *terraform_template_pre
+  stage: plan
+  script:
+    - terraform plan
+      -out=output/$AWS_ENVIRONMENT.plan
+      -var GITLAB_CI_PIPELINE_ID=$CI_PIPELINE_ID
+      -var GITLAB_CI_PROJECT_NAME=$CI_PROJECT_NAME
+      -var ENVIRONMENT=$AWS_ENVIRONMENT
+      -var EMR_MASTER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_WORKER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_NUM_WORKERS=3
+      -var AMI_OWNER=$AWS_PREVIOUS_ACCOUNT_ID
+      -var VPC_ENVIRONMENT=previous
+      -var SG_ENVIRONMENT=$AWS_ENVIRONMENT
+      -var CARTERA_DATE=$CARTERA_DATE
+      -var BILL_YEAR=$BILL_YEAR
+      -var BILL_MONTH=$BILL_MONTH
+      -var DATE_FROM=$DATE_FROM
+      -var PROCESS_DATE=$PROCESS_DATE
+      -var DATE=$DATE
+      -var INVENTORY_DATE=$INVENTORY_DATE
+      -var SPOT_PRICE=$SPOT_PRICE
+      -var SPOT_INSTANCE=$SPOT_INSTANCE
+  artifacts:
+    paths:
+      - output
+
+apply_and_run_pre:
+  <<: *terraform_template_pre
+  stage: apply
+  script:
+    - terraform apply output/$AWS_ENVIRONMENT.plan
+
+destroy_pre:
+  <<: *terraform_template_pre
+  stage: management
+  script:
+    - terraform destroy --force
+      -var GITLAB_CI_PIPELINE_ID=$CI_PIPELINE_ID
+      -var GITLAB_CI_PROJECT_NAME=$CI_PROJECT_NAME
+      -var ENVIRONMENT=$AWS_ENVIRONMENT
+      -var EMR_MASTER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_WORKER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_NUM_WORKERS=3
+      -var AMI_OWNER=$AWS_PREVIOUS_ACCOUNT_ID
+      -var VPC_ENVIRONMENT=previous
+      -var SG_ENVIRONMENT=$AWS_ENVIRONMENT
+      -var CARTERA_DATE=$CARTERA_DATE
+      -var BILL_YEAR=$BILL_YEAR
+      -var BILL_MONTH=$BILL_MONTH
+      -var DATE_FROM=$DATE_FROM
+      -var PROCESS_DATE=$PROCESS_DATE
+      -var DATE=$DATE
+      -var INVENTORY_DATE=$INVENTORY_DATE
+      -var SPOT_PRICE=$SPOT_PRICE
+      -var SPOT_INSTANCE=$SPOT_INSTANCE
+  when: manual
+
+.terraform_template_pro: &terraform_template_pro
+  image: gitlab-registry.platform.xbyorange.com/xbyorange/sdlc/terraform-container:0.11.14
+  variables:
+    AWS_REGION: eu-central-1
+    BUCKET_NAME: orange-x.production-environments.terraform.states
+    AWS_ENVIRONMENT: production
+  before_script:
+    - terraform init
+        -backend-config="bucket=$BUCKET_NAME"
+        -backend-config="key=orange-x.$AWS_ENVIRONMENT-environments.bigdata.emr.processes.terraform.state"
+        -backend-config="region=$AWS_REGION"
+    - terraform get -update
+  tags:
+    - aws
+    - docker
+    - production-bigdata
+    - private
+  only:
+    - master
+    - /^reprocess.*/
+
+validate_pro:
+  <<: *terraform_template_pro
+  stage: validate
+  script:
+    - terraform validate
+      -var GITLAB_CI_PIPELINE_ID=$CI_PIPELINE_ID
+      -var GITLAB_CI_PROJECT_NAME=$CI_PROJECT_NAME
+      -var ENVIRONMENT=$AWS_ENVIRONMENT
+      -var EMR_MASTER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_WORKER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_NUM_WORKERS=3
+      -var AMI_OWNER=$AWS_PREVIOUS_ACCOUNT_ID
+      -var VPC_ENVIRONMENT=$AWS_ENVIRONMENT
+      -var SG_ENVIRONMENT=$AWS_ENVIRONMENT
+      -var CARTERA_DATE=$CARTERA_DATE
+      -var BILL_YEAR=$BILL_YEAR
+      -var BILL_MONTH=$BILL_MONTH
+      -var DATE_FROM=$DATE_FROM
+      -var PROCESS_DATE=$PROCESS_DATE
+      -var DATE=$DATE
+      -var INVENTORY_DATE=$INVENTORY_DATE
+      -var SPOT_PRICE=$SPOT_PRICE
+      -var SPOT_INSTANCE=$SPOT_INSTANCE
+
+plan_pro:
+  <<: *terraform_template_pro
+  stage: plan
+  script:
+    - terraform plan
+      -out=output/$AWS_ENVIRONMENT.plan
+      -var GITLAB_CI_PIPELINE_ID=$CI_PIPELINE_ID
+      -var GITLAB_CI_PROJECT_NAME=$CI_PROJECT_NAME
+      -var ENVIRONMENT=$AWS_ENVIRONMENT
+      -var EMR_MASTER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_WORKER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_NUM_WORKERS=3
+      -var AMI_OWNER=$AWS_PREVIOUS_ACCOUNT_ID
+      -var VPC_ENVIRONMENT=$AWS_ENVIRONMENT
+      -var SG_ENVIRONMENT=$AWS_ENVIRONMENT
+      -var CARTERA_DATE=$CARTERA_DATE
+      -var BILL_YEAR=$BILL_YEAR
+      -var BILL_MONTH=$BILL_MONTH
+      -var DATE_FROM=$DATE_FROM
+      -var PROCESS_DATE=$PROCESS_DATE
+      -var DATE=$DATE
+      -var INVENTORY_DATE=$INVENTORY_DATE
+      -var SPOT_PRICE=$SPOT_PRICE
+      -var SPOT_INSTANCE=$SPOT_INSTANCE
+  artifacts:
+    paths:
+      - output
+
+apply_and_run_pro:
+  <<: *terraform_template_pro
+  stage: apply
+  script:
+    - terraform apply output/$AWS_ENVIRONMENT.plan
+
+destroy_pro:
+  <<: *terraform_template_pro
+  stage: management
+  script:
+    - terraform destroy --force
+      -var GITLAB_CI_PIPELINE_ID=$CI_PIPELINE_ID
+      -var GITLAB_CI_PROJECT_NAME=$CI_PROJECT_NAME
+      -var ENVIRONMENT=$AWS_ENVIRONMENT
+      -var EMR_MASTER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_WORKER_INSTANCE=$SPOT_INSTANCE
+      -var EMR_NUM_WORKERS=3
+      -var AMI_OWNER=$AWS_PREVIOUS_ACCOUNT_ID
+      -var VPC_ENVIRONMENT=$AWS_ENVIRONMENT
+      -var SG_ENVIRONMENT=$AWS_ENVIRONMENT
+      -var CARTERA_DATE=$CARTERA_DATE
+      -var BILL_YEAR=$BILL_YEAR
+      -var BILL_MONTH=$BILL_MONTH
+      -var DATE_FROM=$DATE_FROM
+      -var PROCESS_DATE=$PROCESS_DATE
+      -var DATE=$DATE
+      -var INVENTORY_DATE=$INVENTORY_DATE
+      -var SPOT_PRICE=$SPOT_PRICE
+      -var SPOT_INSTANCE=$SPOT_INSTANCE
+  when: manual

@@ -1,0 +1,6 @@
+.terraform
+terraform*
+*.plan
+.env*
+*.iml
+*.xml
